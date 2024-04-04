@@ -1,10 +1,12 @@
-import TodoList from "./react-query/TodoList";
+import Posts from "./react-query/Posts";
+// import TodoList from "./react-query/TodoList";
 
 
 function App() {
   return (
     <>
-      <TodoList />
+      {/* <TodoList /> */}
+      <Posts />
     </>
   );
 }
