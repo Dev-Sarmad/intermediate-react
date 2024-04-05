@@ -5,22 +5,28 @@ interface Post {
   body: string;
   userId: number;
 }
-const usePosts = (userId: number | undefined) => {
+interface PostQuery {
+  page: number;
+  pageSize: number;
+}
+const usePosts = (query: PostQuery) => {
   const fetchPosts = () =>
     axios
       .get<Post[]>("https://jsonplaceholder.typicode.com/posts", {
         // passing the config object to fetch the specific results
         params: {
-          userId,
+          //index of starting postion
+          _start: (query.page - 1) * query.pageSize,
+          _limit: query.pageSize,
         },
       })
       .then((response) => response.data);
   return useQuery<Post[], Error>({
-    // setting up the queryKey
-    queryKey: userId ? ["users", userId, "posts"] : ["posts"],
+    // so any time the query changes the react query will fetch the post
+    queryKey: ["posts", query],
     queryFn: fetchPosts,
     // time to consider the data fresh
-    staleTime: 10 * 60 * 1000, //1minute
+    staleTime: 1 * 60 * 1000, //1minute
   });
 };
 export default usePosts;
