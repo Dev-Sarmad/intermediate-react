@@ -1,15 +1,29 @@
+import { useState } from "react";
 import usePosts from "../hooks/usePosts";
 
 function Posts() {
-  const { data, isLoading, error } = usePosts();
+  const [userId, setUserId] = useState<number>();
+  // pass the userId to fetch the specific data frim the backend
+  const { data, isLoading, error } = usePosts(userId);
   if (error) return <p>{error.message}</p>;
   if (isLoading) return <p>Loading posts</p>;
   return (
-    <ul>
-      {data?.map((post) => (
-        <li key={post.id}>{post.body}</li>
-      ))}
-    </ul>
+    <>
+      <select
+        onChange={(e) => setUserId(parseInt(e.target.value))}
+        value={userId}
+      >
+        <option value=""></option>
+        <option value="1">User 1</option>
+        <option value="2">User 2 </option>
+        <option value="3">User #</option>
+      </select>
+      <ul>
+        {data?.map((post) => (
+          <li key={post.id}>{post.body}</li>
+        ))}
+      </ul>
+    </>
   );
 }
 
