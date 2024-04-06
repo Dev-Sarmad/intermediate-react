@@ -1,25 +1,30 @@
-import { useState } from "react";
+import React from "react";
 import usePosts from "../hooks/usePosts";
 
 function Posts() {
   const pageSize = 10;
-  // state for keeping track of page number
-  const [page, setPage] = useState<number>(1);
   // pass the query object
-  const { data, isLoading, error } = usePosts({ page, pageSize });
+  const { data, isLoading, error, fetchNextPage, isFetchingNextPage } =
+    usePosts({ pageSize });
   if (error) return <p>{error.message}</p>;
   if (isLoading) return <p>Loading posts</p>;
   return (
     <>
       <ul>
-        {data?.map((post) => (
-          <li key={post.id}>{post.body}</li>
+        {/* here the data is not the array of post but it is post[][] */}
+        {data.pages.map((page, index) => (
+          <React.Fragment key={index}>
+            {/* single post data  */}
+            {page.map((post) => (
+              <li key={post.id}>{post.body}</li>
+            ))}
+          </React.Fragment>
         ))}
       </ul>
-      <button disabled={page === 1} onClick={() => setPage(page - 1)}>
-        Previous
+
+      <button disabled={isFetchingNextPage} onClick={() => fetchNextPage()}>
+        {isFetchingNextPage ? "Fetchin the data " : "Load More"}
       </button>
-      <button onClick={() => setPage(page + 1)}>Next</button>
     </>
   );
 }

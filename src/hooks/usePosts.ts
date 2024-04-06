@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import axios from "axios";
 interface Post {
   id: number;
@@ -6,27 +6,31 @@ interface Post {
   userId: number;
 }
 interface PostQuery {
-  page: number;
   pageSize: number;
 }
 const usePosts = (query: PostQuery) => {
-  const fetchPosts = () =>
-    axios
-      .get<Post[]>("https://jsonplaceholder.typicode.com/posts", {
-        // passing the config object to fetch the specific results
-        params: {
-          //index of starting postion
-          _start: (query.page - 1) * query.pageSize,
-          _limit: query.pageSize,
-        },
-      })
-      .then((response) => response.data);
-  return useQuery<Post[], Error>({
+  // change the useQuery to useInfiniteQueryhook
+  return useInfiniteQuery<Post[], Error>({
     // so any time the query changes the react query will fetch the post
     queryKey: ["posts", query],
-    queryFn: fetchPosts,
+    //pageParam is the property in useInfinite
+    queryFn: ({ pageParam = 1 }) =>
+      axios
+        .get<Post[]>("https://jsonplaceholder.typicode.com/posts", {
+          // passing the config object to fetch the specific results
+          params: {
+            //index of starting postion
+            _start: (pageParam - 1) * query.pageSize,
+            _limit: query.pageSize,
+          },
+        })
+        .then((response) => response.data),
     // time to consider the data fresh
     staleTime: 1 * 60 * 1000, //1minute
+    getNextPageParam: (lastPage, allPages) => {
+      //retuning the next page number and now pass this function to queryFn
+      return lastPage.length > 0 ? allPages.length + 1 : undefined;
+    },
   });
 };
 export default usePosts;
