@@ -1,12 +1,13 @@
-import Posts from "./react-query/Posts";
-// import TodoList from "./react-query/TodoList";
-
+// import Posts from "./react-query/Posts";
+import TodoForm from "./react-query/TodoForm";
+import TodoList from "./react-query/TodoList";
 
 function App() {
   return (
     <>
-      {/* <TodoList /> */}
-      <Posts />
+      <TodoForm />
+      <TodoList />
+      {/* <Posts /> */}
     </>
   );
 }
