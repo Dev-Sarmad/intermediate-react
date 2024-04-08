@@ -6,7 +6,8 @@ import { Todo } from "../hooks/useTodos";
 const TodoForm = () => {
   const queryClient = useQueryClient();
   const ref = useRef<HTMLInputElement>(null);
-  const addTodo = useMutation({
+  //Todo: The data we get from the backend and 2nd Todo is data we are sending to the backend
+  const addTodo = useMutation<Todo, Error, Todo>({
     mutationFn: (todo: Todo) =>
       axios
         .post<Todo>("https://jsonplaceholder.typicode.com/todos", todo)
@@ -25,26 +26,32 @@ const TodoForm = () => {
   });
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        //these values will be passed to the useMutationhooks mutationFn
-        if (ref.current && ref.current.value)
-          addTodo.mutate({
-            id: 0,
-            title: ref.current?.value,
-            completed: false,
-            userId: 1,
-          });
-      }}
-    >
-      <div>
-        <input ref={ref} type="text" />
-      </div>
-      <div>
-        <button type="submit">Add</button>
-      </div>
-    </form>
+    <>
+      {addTodo.error && <p>{addTodo.error.message}</p>}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          //these values will be passed to the useMutationhooks mutationFn
+          if (ref.current && ref.current.value)
+            addTodo.mutate({
+              id: 0,
+              title: ref.current?.value,
+              completed: false,
+              userId: 1,
+            });
+          if (ref.current) ref.current.value = "";
+        }}
+      >
+        <div>
+          <input ref={ref} type="text" />
+        </div>
+        <div>
+          <button type="submit">
+            {addTodo.isLoading ? "Adding todo..." : "Add"}
+          </button>
+        </div>
+      </form>
+    </>
   );
 };
 
