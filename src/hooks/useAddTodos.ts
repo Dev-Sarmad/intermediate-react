@@ -1,18 +1,17 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Todo } from "./useTodos";
-import axios from "axios";
 import { CACHE_TODOS_KEY } from "../react-query/Constants";
+import APIClient from "../Services/api-client";
+
 interface AddTodoContext {
   previousTodos: Todo[];
 }
 const useAddTodos = () => {
+  const apiClient = new APIClient<Todo>("/todos");
   const queryClient = useQueryClient();
   //Todo: The data we get from the backend and 2nd Todo is data we are sending to the backend
   return useMutation<Todo, Error, Todo, AddTodoContext>({
-    mutationFn: (todo: Todo) =>
-      axios
-        .post<Todo>("https://jsonplaceholder.typicode.com/todos", todo)
-        .then((response) => response.data),
+    mutationFn: apiClient.getPost,
     //execute before the mutation function
     onMutate: (newTodo: Todo) => {
       //previous todos before the update of cache
