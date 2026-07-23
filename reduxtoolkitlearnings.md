@@ -619,4 +619,113 @@ Possible values:
 - `failed`
 
 Also, maintain a separate `status` for each feature instead of sharing a single loading state across the entire application.
+
+# Extra Reducers
+
+`extraReducers` allows one slice to respond to actions created outside of that slice.
+
+Entity adapters are used in production applications like CRM and eCommerce, where we maintain collections such as:
+
+- Products
+- Todos
+- Users
+- Posts
+- Comments
+- Likes
+
+They maintain the state in a normalized format like this:
+
+```js
+{
+  ids: [1, 2, 3, 4],
+  entities: {
+    1: { name: "Ali" }
+  }
+}
+```
+
+## Example
+
+```js
+import { createEntityAdapter, createSlice } from "@reduxjs/toolkit";
+import { fetchUser } from "./entityThunk";
+
+const usersAdapter = createEntityAdapter();
+
+const initialState = usersAdapter.getInitialState({
+  loading: false,
+  error: null,
+});
+
+const entitySlice = createSlice({
+  name: "entityAdapter",
+  initialState,
+  reducers: {
+    removeUser(state, action) {
+      usersAdapter.removeOne(state, action.payload);
+    },
+  },
+
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchUser.fulfilled, (state, action) => {
+        usersAdapter.setAll(state, action.payload);
+
+        // There are multiple methods based on the use case
+        usersAdapter.updateOne(state, {
+          id: 1,
+          changes: { name: "sarmad" },
+        });
+
+        usersAdapter.updateMany(state, objectsArray);
+        usersAdapter.addOne(state, object);
+        usersAdapter.addMany(state, objectsArray);
+        usersAdapter.setOne(state, object);
+        usersAdapter.removeOne(state, id);
+        usersAdapter.removeMany(state, [id, id]);
+
+        state.loading = false;
+      })
+      .addCase(fetchUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || action.error.message;
+      })
+      .addCase(fetchUser.pending, (state) => {
+        state.loading = true;
+        state.error = false;
+      });
+  },
+});
+
+export const { removeUser } = entitySlice.actions;
+export const { selectAll } = usersAdapter.getSelectors(
+  (state) => state.users
+);
+
+export default entitySlice.reducer;
+```
+
+## Mental Model: When to Use Entity Adapter
+
+```
+Am I storing many objects?
+        │
+        ▼
+Do they each have an ID?
+        │
+        ▼
+Will I frequently:
+- Add
+- Update
+- Delete
+- Find
+- Replace
+them?
+        │
+      YES
+        │
+        ▼
+Use Entity Adapter
+```
+
 ````
