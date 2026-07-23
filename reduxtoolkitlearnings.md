@@ -513,4 +513,110 @@ Redux Toolkit automatically generates action creators for them.
 ## `extraReducers`
 
 Allows the current slice to respond to actions created elsewhere, such as actions from another slice.
+
+# Redux Reducers and Async Operations
+
+The Redux reducers can't pause execution. The state should be predictable because reducers are **pure functions**, which means that for the same input they always return the same output.
+
+If we put an API call inside a reducer, the returned data can be different every time, making the reducer impure. For example:
+
+- Sometimes the request takes **2 seconds**.
+- Sometimes it takes **4 seconds**.
+- Sometimes the response is `[]`.
+- Next time it could be `[{ name: "ali" }]`.
+- Another time it could return something completely different.
+
+Because of this, reducers cannot contain async operations. Reducers should only calculate the next state synchronously.
+
+---
+
+# `createAsyncThunk`
+
+Before `createAsyncThunk`, we had to manually create three actions:
+
+- `fetchUserStart` (loading)
+- `fetchUserSuccess`
+- `fetchUserFailure` (error)
+
+We also had to create three reducers to handle these actions.
+
+Example:
+
+```js
+try {
+  dispatch(fetchUserStart);
+
+  const res = await fetch("/users");
+  const data = await res.json();
+
+  dispatch(fetchUsersSuccess(data));
+} catch (err) {
+  dispatch(fetchUsersFailure(err.message));
+}
+```
+
+After `createAsyncThunk`:
+
+```js
+import { createAsyncThunk } from "@reduxjs/toolkit";
+
+export const fetchUsers = createAsyncThunk(
+  "users/fetchUsers",
+  async () => {
+    const response = await fetch(
+      "https://jsonplaceholder.typicode.com/users"
+    );
+
+    return await response.json();
+  }
+);
+```
+
+`createAsyncThunk` automatically creates these action types:
+
+- `users/fetchUsers/pending`
+- `users/fetchUsers/fulfilled`
+- `users/fetchUsers/rejected`
+
+---
+
+# Error Handling with `rejectWithValue`
+
+If we want to display business-related errors, `state.error` should use `action.payload`. This payload comes from `rejectWithValue`.
+
+Example:
+
+```js
+createAsyncThunk("...", async (_, thunkAPI) => {
+  return thunkAPI.rejectWithValue();
+});
+```
+
+In production, we should handle both:
+
+- Unexpected/runtime errors
+- Business errors returned by the backend
+
+Example:
+
+```js
+builder.addCase(login.rejected, (state, action) => {
+  state.error = action.payload || action.error.message;
+});
+```
+
+---
+
+# Use `status` Instead of `loading`
+
+Instead of a boolean `loading` state, use a `status` field.
+
+Possible values:
+
+- `idle`
+- `loading`
+- `success`
+- `failed`
+
+Also, maintain a separate `status` for each feature instead of sharing a single loading state across the entire application.
 ````
