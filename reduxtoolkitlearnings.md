@@ -1,4 +1,3 @@
-````md
 # Redux Toolkit Notes
 
 ## State
@@ -726,6 +725,116 @@ them?
         │
         ▼
 Use Entity Adapter
+
+# Memoized Selector
+
+A **selector** is a function that extracts data from the store.
+
+```js
+useSelector((state) => state.cart.items);
 ```
 
-````
+This is a simple selector that re-renders the component only when the selected state changes.
+
+Suppose I want to calculate the total cart price inside the component using `reduce()`. It will calculate the total, but it will not cache the result. If the component re-renders because its parent re-rendered, it will perform the same computation again using `reduce()`, even though the state has not changed.
+
+To tackle this, Redux Toolkit introduces the **memoized selector**. It basically saves the output when it sees that the input hasn't changed.
+
+## Creating a Memoized Selector
+
+```js
+import { createSelector } from "@reduxjs/toolkit";
+
+const selectCartItems = (state) => state.cart.items;
+
+export const selectTotalPrice = createSelector(
+  [selectCartItems],
+  (items) => {
+    return items.reduce(
+      (sum, item) => sum + item.price,
+      0
+    );
+  }
+);
+```
+
+## Using It Inside the Component
+
+```js
+const total = useSelector(selectTotalPrice);
+```
+
+## How `createSelector` Works Internally
+
+```text
+Input
+  │
+  ▼
+Compare with previous input
+  │
+  ▼
+Changed?
+ /      \
+No       Yes
+│         │
+▼         ▼
+Return    Recalculate
+Cache     Cache Again
+```
+
+## Selectors Can Combine Multiple Slices
+
+```js
+const selectProducts = (state) => state.products.items;
+
+const selectCategory = (state) => state.products.category;
+
+export const selectFilteredProducts = createSelector(
+  [selectProducts, selectCategory],
+  (products, category) => {
+    return products.filter(
+      (p) => p.category === category
+    );
+  }
+);
+```
+
+We have to perform filtering, sorting, searching, discount calculations, and inventory-related logic inside selectors instead of inside the component.
+
+## Example
+
+```js
+state = {
+  cart: {
+    items: [...]
+  },
+  user: {...},
+  notifications: [...]
+};
+
+const selectTotal = createSelector(
+  [state => state.cart.items],
+  items => items.reduce((sum, item) => sum + item.price, 0)
+);
+```
+
+### Question
+
+Will `selectTotal` run its `reduce()` function again? Why or why not?
+
+Will the component using `useSelector(selectTotal)` necessarily re-render?
+
+### Answer
+
+`selectTotal` will not recompute because `state.cart.items` still points to the same array reference. `createSelector` compares its input selector's result with the previous one using reference equality (`===`). Since the input hasn't changed, it returns the cached total instead of running `reduce()` again.
+
+The component using `useSelector(selectTotal)` will not re-render because the total does not change.
+
+### What Happens Internally?
+
+1. Redux store updates because `notifications` changed.
+2. `useSelector(selectTotal)` runs the selector again.
+3. `createSelector` sees that `cart.items` is the same reference.
+4. It returns the cached total.
+5. `useSelector` compares the returned value with the previous one.
+6. Since the total is unchanged (same primitive value), React skips re-rendering that component.
