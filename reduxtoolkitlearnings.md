@@ -838,3 +838,44 @@ The component using `useSelector(selectTotal)` will not re-render because the to
 4. It returns the cached total.
 5. `useSelector` compares the returned value with the previous one.
 6. Since the total is unchanged (same primitive value), React skips re-rendering that component.
+
+# Middleware
+
+Middleware are the normal function which sit between the dispatch and the reducer. Mostly use for the logging, authentication, analytics, performance monitor, Token refresh, error report which action dispatched.
+
+Middleware in Redux Toolkit have 3 arguments: `store`, `next`, and `action`.
+
+The order matters:
+
+- `store` gives us state. We get it by `store.getState()`.
+- `next` function receive the action. The job of the `next()` is send action to a next middleware or reducer.
+- Returning the `next()` is important because the reducer wont get the action and will not update the state.
+
+Middleware is mainly for side effects and cross-cutting concerns.
+
+## Logger middleware example
+
+```js
+const loggerMiddleware = store => next => action => {
+  console.log("Old State");
+
+  console.log(store.getState());
+
+  next(action);
+
+  console.log("New State");
+
+  console.log(store.getState());
+};
+```
+
+## Usage inside the store
+
+```js
+const store = configureStore({
+  reducer,
+
+  middleware: getDefaultMiddleware =>
+    getDefaultMiddleware().concat(logger)
+});
+```
