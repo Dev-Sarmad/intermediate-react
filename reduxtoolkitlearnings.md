@@ -1043,3 +1043,95 @@ The hook returns an object containing fields like:
   ...
 }
 ```
+
+# `builder.mutation`
+
+Mutation is changing data via HTTP methods i.e. `POST`, `PATCH`, `PUT`, and `DELETE`.
+
+`builder.mutation` function return us an array instead of the object like `useGetUserQuery` hook `builder.query`.
+
+The array contains the trigger function and the mutation state.
+
+But why not an object like `builder.query` because when we use the mutation hook if it returns array each time the component mount it create new object like whenever the components mounts it immediately fetch the data.
+
+The trigger function trigger the mutation.
+
+## Imagine if mutations worked like queries
+
+```jsx
+const { data } = useCreateUserMutation();
+```
+
+When would RTK Query know when to create the user?
+
+- On component mount?
+- After a button click?
+- After form submission?
+
+It can't know.
+
+That's why it returns:
+
+```jsx
+function AddUser() {
+  const [
+    createUser,
+    { isLoading, isSuccess, error },
+  ] = useCreateUserMutation();
+
+  const handleSubmit = async () => {
+    try {
+      await createUser({
+        firstName: "Ali",
+        age: 22,
+      }).unwrap();
+    } catch (error) {
+      throw new Error(error);
+    }
+  };
+
+  return (
+    <>
+      <button onClick={handleSubmit}>
+        Create User
+      </button>
+
+      {isLoading && <p>Creating...</p>}
+
+      {isSuccess && <p>User Created!</p>}
+
+      {error && <p>Something went wrong</p>}
+    </>
+  );
+}
+```
+
+## Why do we use `unwrap()`?
+
+Here we `unwrap` when using `try catch` because it does throw errors.
+
+You're not awaiting a normal Promise returned by `fetch()` or `axios`. Instead, you're awaiting a Redux action promise.
+
+It resolves in both of the cases, if the promise rejects due to some error it resolves it and in success it still resolves that's why we don't get error in catch block.
+
+`unwrap()` converts the Redux action promise into a normal JavaScript Promise.
+
+```text
+updateUser(user)
+       │
+       ▼
+dispatch(initiateMutation())
+       │
+       ▼
+Redux Middleware
+       │
+       ▼
+API Request
+       │
+       ▼
+Returns an action object even if server response 500 RTK Query still resolves the promise with an action describing the result instead of rejecting it.
+```
+
+## Why should you never call a mutation directly during component rendering?
+
+Because it will mutate on every render so that we have to use trigger function provided by RTK Query.
