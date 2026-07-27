@@ -1135,3 +1135,200 @@ Returns an action object even if server response 500 RTK Query still resolves th
 ## Why should you never call a mutation directly during component rendering?
 
 Because it will mutate on every render so that we have to use trigger function provided by RTK Query.
+
+# Cache Tags
+
+Suppose we have a list of products that are cached. If `product/2` changes, how does RTK Query know that Product #2 has been updated?
+
+Without cache tags, the manual approach is to call `refetch()` to fetch the data again.
+
+RTK Query solves this problem using two important keywords:
+
+- **`providesTags`** (used in queries)
+- **`invalidatesTags`** (used in mutations)
+
+When data is fetched, it is cached using `providesTags`. When a mutation updates the data, `invalidatesTags` marks the cache as stale, causing RTK Query to revalidate and refetch the affected data.
+
+## Basic Example
+
+```js
+getProducts: builder.query({
+  query: () => "/products",
+
+  providesTags: ["Products"],
+});
+```
+
+This means the query provides the `"Products"` cache tag.
+
+```js
+updateProduct: builder.mutation({
+  query: (product) => ({
+    url: `/products/${product.id}`,
+    method: "PATCH",
+    body: product,
+  }),
+});
+```
+
+A complete example:
+
+```js
+export const api = createApi({
+  reducerPath: "api",
+
+  baseQuery: fetchBaseQuery({
+    baseUrl: "/api",
+  }),
+
+  tagTypes: ["Products"],
+
+  endpoints: (builder) => ({
+    getProducts: builder.query({
+      query: () => "/products",
+
+      providesTags: ["Products"],
+    }),
+
+    addProduct: builder.mutation({
+      query: (body) => ({
+        url: "/products",
+        method: "POST",
+        body,
+      }),
+
+      invalidatesTags: ["Products"],
+    }),
+  }),
+});
+```
+
+Before using tags, declare all possible tag names in `createApi`:
+
+```js
+tagTypes: ["Products", "Users", "Orders"];
+```
+
+A mutation invalidates a tag like this:
+
+```js
+invalidatesTags: ["Products"];
+```
+
+---
+
+# Cache Tags (List + IDs)
+
+Imagine we have **10,000 cached products**.
+
+If we update **Product #5**, the cache becomes stale because it contains old data.
+
+With a single cache tag:
+
+```js
+providesTags: ["Products"];
+```
+
+RTK Query refetches **all 10,000 products** just to update Product #5.
+
+This causes:
+
+- Unnecessary renders
+- Network traffic overhead
+- Slower UI
+- More load on the server
+
+Instead of using only one tag, we can provide a unique tag for every cached item.
+
+```js
+providesTags: (result) =>
+  result
+    ? [
+        ...result.map((product) => ({
+          type: "Products",
+          id: product.id,
+        })),
+        { type: "Products", id: "LIST" },
+      ]
+    : [{ type: "Products", id: "LIST" }];
+```
+
+Each product has its own unique cache tag, while the entire collection is represented by a special `"LIST"` tag.
+
+```text
+{ type: "Products", id: "LIST" }
+```
+
+When updating a product:
+
+```js
+updateProduct: builder.mutation({
+  query: (product) => ({
+    url: `/products/${product.id}`,
+    method: "PATCH",
+    body: product,
+  }),
+
+  invalidatesTags: (result, error, product) => [
+    { type: "Products", id: product.id },
+  ],
+});
+```
+
+Suppose:
+
+```js
+product.id = 2;
+```
+
+Now, when Product #2 is updated, RTK Query marks **only that product's cache entry** as stale instead of the entire list of 10,000 products.
+
+When adding a new product:
+
+```js
+addProduct: builder.mutation({
+  query: (product) => ({
+    url: "/products",
+    method: "POST",
+    body: product,
+  }),
+
+  invalidatesTags: [{ type: "Products", id: "LIST" }],
+});
+```
+
+## Cache Flow
+
+```text
+tagTypes: ["Products"]
+
+getProducts
+    │
+    ▼
+provides:
+1
+2
+3
+4
+LIST
+
+updateProduct(id: 2)
+    │
+    ▼
+invalidates:
+2
+    │
+    ▼
+Only Product #2 cache refreshes.
+
+--------------------------------
+
+addProduct()
+    │
+    ▼
+invalidates:
+LIST
+    │
+    ▼
+Only the product list refreshes.
+```
